@@ -15,3 +15,6 @@ target/
 ext-lib-src/
 .ensime
 .ensime_cache/
+/activemq-data
+.bloop/
+.metals/

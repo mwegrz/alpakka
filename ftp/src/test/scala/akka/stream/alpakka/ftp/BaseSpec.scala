@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2017 Lightbend Inc. <http://www.lightbend.com>
+ * Copyright (C) 2016-2019 Lightbend Inc. <http://www.lightbend.com>
  */
 
 package akka.stream.alpakka.ftp
@@ -33,9 +33,18 @@ trait BaseSpec
 
   protected def storeToPath(path: String, append: Boolean): Sink[ByteString, Future[IOResult]]
 
+  protected def remove(): Sink[FtpFile, Future[IOResult]]
+
+  protected def move(destinationPath: FtpFile => String): Sink[FtpFile, Future[IOResult]]
+
   protected def startServer(): Unit
 
   protected def stopServer(): Unit
+
+  /** For a few tests `assertAllStagesStopped` failed on Travis, this hook allows to inject a bit more patience
+   * for the check.
+   */
+  protected def extraWaitForStageShutdown(): Unit = ()
 
   after {
     cleanFiles()

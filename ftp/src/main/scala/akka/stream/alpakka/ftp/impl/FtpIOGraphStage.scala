@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2017 Lightbend Inc. <http://www.lightbend.com>
+ * Copyright (C) 2016-2019 Lightbend Inc. <http://www.lightbend.com>
  */
 
 package akka.stream.alpakka.ftp
@@ -14,8 +14,14 @@ import akka.util.ByteString.ByteString1C
 import scala.concurrent.{Future, Promise}
 import java.io.{IOException, InputStream, OutputStream}
 
+import akka.annotation.InternalApi
+
 import scala.util.control.NonFatal
 
+/**
+ * INTERNAL API
+ */
+@InternalApi
 private[ftp] trait FtpIOGraphStage[FtpClient, S <: RemoteFileSettings, Sh <: Shape]
     extends GraphStageWithMaterializedValue[Sh, Future[IOResult]] {
 
@@ -35,6 +41,10 @@ private[ftp] trait FtpIOGraphStage[FtpClient, S <: RemoteFileSettings, Sh <: Sha
   override def shape: Sh
 }
 
+/**
+ * INTERNAL API
+ */
+@InternalApi
 private[ftp] trait FtpIOSourceStage[FtpClient, S <: RemoteFileSettings]
     extends FtpIOGraphStage[FtpClient, S, SourceShape[ByteString]] {
 
@@ -126,6 +136,10 @@ private[ftp] trait FtpIOSourceStage[FtpClient, S <: RemoteFileSettings]
 
 }
 
+/**
+ * INTERNAL API
+ */
+@InternalApi
 private[ftp] trait FtpIOSinkStage[FtpClient, S <: RemoteFileSettings]
     extends FtpIOGraphStage[FtpClient, S, SinkShape[ByteString]] {
 
@@ -208,4 +222,86 @@ private[ftp] trait FtpIOSinkStage[FtpClient, S <: RemoteFileSettings]
     (logic, matValuePromise.future)
   }
 
+}
+
+/**
+ * INTERNAL API
+ */
+@InternalApi
+private[ftp] trait FtpMoveSink[FtpClient, S <: RemoteFileSettings]
+    extends GraphStageWithMaterializedValue[SinkShape[FtpFile], Future[IOResult]] {
+  val connectionSettings: S
+  val ftpClient: () => FtpClient
+  val ftpLike: FtpLike[FtpClient, S]
+  val destinationPath: FtpFile => String
+  val in: Inlet[FtpFile] = Inlet("FtpMvSink")
+
+  def shape: SinkShape[FtpFile] = SinkShape(in)
+
+  def createLogicAndMaterializedValue(inheritedAttributes: Attributes) = {
+    val matValuePromise = Promise[IOResult]()
+
+    val logic = new FtpGraphStageLogic[FtpFile, FtpClient, S](shape, ftpLike, connectionSettings, ftpClient) {
+      {
+        setHandler(
+          in,
+          new InHandler {
+            override def onPush(): Unit = {
+              val sourcePath = grab(in)
+              ftpLike.move(sourcePath.path, destinationPath(sourcePath), handler.get)
+              pull(in)
+            }
+          }
+        )
+      }
+
+      protected[this] def doPreStart(): Unit = pull(in)
+
+      protected[this] def matSuccess(): Boolean =
+        matValuePromise.trySuccess(IOResult.createSuccessful(1))
+
+      protected[this] def matFailure(t: Throwable): Boolean =
+        matValuePromise.trySuccess(IOResult.createFailed(1, t))
+    } // end of stage logic
+
+    (logic, matValuePromise.future)
+  }
+}
+
+/**
+ * INTERNAL API
+ */
+@InternalApi
+private[ftp] trait FtpRemoveSink[FtpClient, S <: RemoteFileSettings]
+    extends GraphStageWithMaterializedValue[SinkShape[FtpFile], Future[IOResult]] {
+  val connectionSettings: S
+  val ftpClient: () => FtpClient
+  val ftpLike: FtpLike[FtpClient, S]
+  val in: Inlet[FtpFile] = Inlet("FtpRmSink")
+
+  def shape: SinkShape[FtpFile] = SinkShape(in)
+
+  def createLogicAndMaterializedValue(inheritedAttributes: Attributes) = {
+    val matValuePromise = Promise[IOResult]()
+    val logic = new FtpGraphStageLogic[Unit, FtpClient, S](shape, ftpLike, connectionSettings, ftpClient) {
+      {
+        setHandler(in, new InHandler {
+          override def onPush(): Unit = {
+            ftpLike.remove(grab(in).path, handler.get)
+            pull(in)
+          }
+        })
+      }
+
+      protected[this] def doPreStart(): Unit = pull(in)
+
+      protected[this] def matSuccess(): Boolean =
+        matValuePromise.trySuccess(IOResult.createSuccessful(1))
+
+      protected[this] def matFailure(t: Throwable): Boolean =
+        matValuePromise.trySuccess(IOResult.createFailed(1, t))
+    } // end of stage logic
+
+    (logic, matValuePromise.future)
+  }
 }

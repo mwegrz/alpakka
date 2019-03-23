@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2017 Lightbend Inc. <http://www.lightbend.com>
+ * Copyright (C) 2016-2019 Lightbend Inc. <http://www.lightbend.com>
  */
 
 package akka.stream.alpakka.ftp
@@ -8,6 +8,7 @@ package impl
 import java.io.{File, IOException, InputStream, OutputStream}
 import java.nio.file.attribute.PosixFilePermission
 
+import akka.annotation.InternalApi
 import net.schmizz.sshj.SSHClient
 import net.schmizz.sshj.sftp.{OpenMode, RemoteResourceInfo, SFTPClient}
 import net.schmizz.sshj.transport.verification.PromiscuousVerifier
@@ -19,6 +20,10 @@ import scala.collection.JavaConverters._
 import scala.collection.immutable
 import scala.util.Try
 
+/**
+ * INTERNAL API
+ */
+@InternalApi
 private[ftp] trait SftpOperations { _: FtpLike[SSHClient, SftpSettings] =>
 
   type Handler = SFTPClient
@@ -137,4 +142,10 @@ private[ftp] trait SftpOperations { _: FtpLike[SSHClient, SftpSettings] =>
         initKey(_.init(new File(id.privateKey), passphrase))
     }
   }
+
+  def move(fromPath: String, destinationPath: String, handler: Handler): Unit =
+    handler.rename(fromPath, destinationPath)
+
+  def remove(path: String, handler: Handler): Unit =
+    handler.rm(path)
 }

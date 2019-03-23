@@ -1,117 +1,198 @@
-# Elasticsearch Connector
+# Elasticsearch
 
-The Elasticsearch connector provides Akka Stream sources and sinks for Elasticsearch.
+The Alpakka Elasticsearch connector provides Akka Streams integration for Elasticsearch.
 
-For more information about Elasticsearch please visit the [official documentation](https://www.elastic.co/guide/index.html).
+For more information about Elasticsearch, please visit the [Elasticsearch documentation](https://www.elastic.co/guide/index.html).
+
+@@project-info{ projectId="elasticsearch" }
 
 ## Artifacts
 
 @@dependency [sbt,Maven,Gradle] {
   group=com.lightbend.akka
-  artifact=akka-stream-alpakka-elasticsearch_$scalaBinaryVersion$
-  version=$version$
+  artifact=akka-stream-alpakka-elasticsearch_$scala.binary.version$
+  version=$project.version$
 }
 
-## Usage
+The table below shows direct dependencies of this module and the second tab shows all libraries it depends on transitively.
 
-Sources, Flows and Sinks provided by this connector need a prepared `RestClient` to access to Elasticsearch.
+@@dependencies { projectId="elasticsearch" }
 
-Scala
-: @@snip ($alpakka$/elasticsearch/src/test/scala/akka/stream/alpakka/elasticsearch/ElasticsearchSpec.scala) { #init-client }
 
-Java
-: @@snip ($alpakka$/elasticsearch/src/test/java/akka/stream/alpakka/elasticsearch/ElasticsearchTest.java) { #init-client }
+## Set up REST client
 
-We will also need an @scaladoc[ActorSystem](akka.actor.ActorSystem) and an @scaladoc[ActorMaterializer](akka.stream.ActorMaterializer).
+Sources, Flows and Sinks provided by this connector need a prepared `org.elasticsearch.client.RestClient` to
+access to Elasticsearch.
 
 Scala
-: @@snip ($alpakka$/elasticsearch/src/test/scala/akka/stream/alpakka/elasticsearch/ElasticsearchSpec.scala) { #init-mat }
+: @@snip [snip](/elasticsearch/src/test/scala/docs/scaladsl/ElasticsearchSpec.scala) { #init-client }
 
 Java
-: @@snip ($alpakka$/elasticsearch/src/test/java/akka/stream/alpakka/elasticsearch/ElasticsearchTest.java) { #init-mat }
+: @@snip [snip](/elasticsearch/src/test/java/docs/javadsl/ElasticsearchTest.java) { #init-client }
 
-This is all preparation that we are going to need.
-
-### Streaming messages
+## Elasticsearch as Source and Sink
 
 Now we can stream messages from or to Elasticsearch by providing the `RestClient` to the
-@scaladoc[ElasticsearchSource](akka.stream.alpakka.elasticsearch.scaladsl.ElasticsearchSource$) or the
-@scaladoc[ElasticsearchSink](akka.stream.alpakka.elasticsearch.scaladsl.ElasticsearchSink$).
+@scala[@scaladoc[ElasticsearchSource](akka.stream.alpakka.elasticsearch.scaladsl.ElasticsearchSource$)]
+@java[@scaladoc[ElasticsearchSource](akka.stream.alpakka.elasticsearch.javadsl.ElasticsearchSource$)]
+or the
+@scala[@scaladoc[ElasticsearchSink](akka.stream.alpakka.elasticsearch.scaladsl.ElasticsearchSink$).]
+@java[@scaladoc[ElasticsearchSink](akka.stream.alpakka.elasticsearch.javadsl.ElasticsearchSink$).]
 
 
 Scala
-: @@snip ($alpakka$/elasticsearch/src/test/scala/akka/stream/alpakka/elasticsearch/ElasticsearchSpec.scala) { #define-class }
+: @@snip [snip](/elasticsearch/src/test/scala/docs/scaladsl/ElasticsearchSpec.scala) { #define-class }
 
 Java
-: @@snip ($alpakka$/elasticsearch/src/test/java/akka/stream/alpakka/elasticsearch/ElasticsearchTest.java) { #define-class }
+: @@snip [snip](/elasticsearch/src/test/java/docs/javadsl/ElasticsearchTest.java) { #define-class }
 
+### With typed source
+
+Use `ElasticsearchSource.typed` and `ElasticsearchSink.create` to create source and sink.
+@scala[The data is converted to and from JSON by Spray JSON.]
+@java[The data is converted to and from JSON by Jackson's ObjectMapper.]
+
+Scala
+: @@snip [snip](/elasticsearch/src/test/scala/docs/scaladsl/ElasticsearchSpec.scala) { #run-typed }
+
+Java
+: @@snip [snip](/elasticsearch/src/test/java/docs/javadsl/ElasticsearchTest.java) { #run-typed }
+
+### With JSON source
 
 Use `ElasticsearchSource.create` and `ElasticsearchSink.create` to create source and sink.
 
 Scala
-: @@snip ($alpakka$/elasticsearch/src/test/scala/akka/stream/alpakka/elasticsearch/ElasticsearchSpec.scala) { #run-typed }
+: @@snip [snip](/elasticsearch/src/test/scala/docs/scaladsl/ElasticsearchSpec.scala) { #run-jsobject }
 
 Java
-: @@snip ($alpakka$/elasticsearch/src/test/java/akka/stream/alpakka/elasticsearch/ElasticsearchTest.java) { #run-typed }
+: @@snip [snip](/elasticsearch/src/test/java/docs/javadsl/ElasticsearchTest.java) { #run-jsobject }
 
 
-### Configuration
+### Writing to Elasticsearch
+
+In the above examples, `WriteMessage` is used as the input to `ElasticsearchSink` and `ElasticsearchFlow`. This means requesting `index` operation to Elasticsearch. It's possible to request other operations using following message types:
+
+| Message factory           | Description                                                                                          |
+| ---------------------- | ---------------------------------------------------------------------------------------------------- |
+| WriteMessage.createIndexMessage   | Create a new document. If `id` is specified and it already exists, do nothing.                       |
+| WriteMessage.createCreateMessage  | Create a new document. If `id` already exists, the `WriteResult` will contain an error.                  |
+| WriteMessage.createUpdateMessage  | Update an existing document. If there is no document with the specified `id`, do nothing.            |
+| WriteMessage.createUpsertMessage  | Update an existing document. If there is no document with the specified `id`, create a new document. |
+| WriteMessage.createDeleteMessage  | Delete an existing document. If there is no document with the specified `id`, do nothing.            |
+
+Scala
+: @@snip [snip](/elasticsearch/src/test/scala/docs/scaladsl/ElasticsearchSpec.scala) { #multiple-operations }
+
+Java
+: @@snip [snip](/elasticsearch/src/test/java/docs/javadsl/ElasticsearchTest.java) { #multiple-operations }
+
+### Source configuration
 
 We can configure the source by `ElasticsearchSourceSettings`.
 
-Scala (source)
-: @@snip ($alpakka$/elasticsearch/src/main/scala/akka/stream/alpakka/elasticsearch/scaladsl/ElasticsearchSourceSettings.scala) { #source-settings }
+Scala
+: @@snip [snip](/elasticsearch/src/test/scala/docs/scaladsl/ElasticsearchSpec.scala) { #source-settings }
 
-| Parameter  | Default | Description                                                                                                              |
-| ---------- | ------- | ------------------------------------------------------------------------------------------------------------------------ |
-| bufferSize | 10      | `ElasticsearchSource` retrieves messages from Elasticsearch by scroll scan. This buffer size is used as the scroll size. | 
+Java
+: @@snip [snip](/elasticsearch/src/test/java/docs/javadsl/ElasticsearchTest.java) { #source-settings }
 
-Also, we can configure the sink by `ElasticsearchSinkSettings`.
 
-Scala (sink)
-: @@snip ($alpakka$/elasticsearch/src/main/scala/akka/stream/alpakka/elasticsearch/scaladsl/ElasticsearchSinkSettings.scala) { #sink-settings }
+| Parameter              | Default | Description                                                                                                              |
+| ---------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------ |
+| bufferSize             | 10      | `ElasticsearchSource` retrieves messages from Elasticsearch by scroll scan. This buffer size is used as the scroll size. | 
+| includeDocumentVersion | false   | Tell Elasticsearch to return the documents `_version` property with the search results. See [Version](http://nocf-www.elastic.co/guide/en/elasticsearch/reference/current/search-request-version.html) and [Optimistic Concurrenct Control](https://www.elastic.co/guide/en/elasticsearch/guide/current/optimistic-concurrency-control.html) to know about this property. |
+| scrollDuration         | 5 min   | `ElasticsearchSource`  retrieves messages from Elasticsearch by scroll scan. This parameter is used as a scroll value. See [Time units](https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#time-units) for supported units.                |
+
+
+### Sink and flow configuration
+
+Sinks and flows are configured with `ElasticsearchWriteSettings`.
+
+Scala
+: @@snip [snip](/elasticsearch/src/test/scala/docs/scaladsl/ElasticsearchSpec.scala) { #sink-settings }
+
+Java
+: @@snip [snip](/elasticsearch/src/test/java/docs/javadsl/ElasticsearchTest.java) { #sink-settings }
+
 
 | Parameter           | Default | Description                                                                                            |
 | ------------------- | ------- | ------------------------------------------------------------------------------------------------------ |
-| bufferSize          | 10      | `ElasticsearchSink` puts messages by one bulk request per messages of this buffer size.                |
-| retryInterval       | 5000    | When a request is failed, `ElasticsearchSink` retries that request after this interval (milliseconds). |
-| maxRetry            | 100     | `ElasticsearchSink` give up and fails the stage if it gets this number of consective failures.         | 
-| retryPartialFailure | true    | A bulk request might fails partially for some reason. If this parameter is true, then `ElasticsearchSink` retries to request these failed messages. Otherwise, failed messages are discarded (or pushed to downstream if you use `ElasticsearchFlow` instead of the sink). |
+| bufferSize          | 10      | Flow and Sink batch messages to bulk requests when back-pressure applies.                             |
+| versionType         | None    | If set, `ElasticsearchSink` uses the chosen versionType to index documents. See [Version types](https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-index_.html#_version_types) for accepted settings. |
+| retryLogic | No retries | See below |
 
-### Using Elasticsearch as a Flow
 
-You can also build flow stages. The API is similar to creating Sinks.
+A bulk request might fail partially for some reason. To retry failed writes to Elasticsearch, a `RetryLogic` can be specified. The provided implementation is `RetryAtFixedRate`.
 
-Scala (flow)
-: @@snip ($alpakka$/elasticsearch/src/test/scala/akka/stream/alpakka/elasticsearch/ElasticsearchSpec.scala) { #run-flow }
+@@@ warning
+If using retries, you will receive messages **out of order downstream** in cases when Elasticsearch returns an error on some of the documents in a bulk request.
+@@@
 
-Java (flow)
-: @@snip ($alpakka$/elasticsearch/src/test/java/akka/stream/alpakka/elasticsearch/ElasticsearchTest.java) { #run-flow }
+
+| Parameter           | Description     |
+|---------------------|-----------------|
+| maxRetries          | The stage fails, if it gets this number of consecutive failures. | 
+| retryInterval       | Failing writes are retried after this duration. |
+
+
+
+## Elasticsearch as Flow
+
+You can also build flow stages with
+@scala[@scaladoc[ElasticsearchFlow](akka.stream.alpakka.elasticsearch.scaladsl.ElasticsearchFlow$).]
+@java[@scaladoc[ElasticsearchFlow](akka.stream.alpakka.elasticsearch.javadsl.ElasticsearchFlow$).]
+The API is similar to creating Sinks.
+
+Scala
+: @@snip [snip](/elasticsearch/src/test/scala/docs/scaladsl/ElasticsearchSpec.scala) { #run-flow }
+
+Java
+: @@snip [snip](/elasticsearch/src/test/java/docs/javadsl/ElasticsearchTest.java) { #run-flow }
+
 
 ### Passing data through ElasticsearchFlow
 
 When streaming documents from Kafka, you might want to commit to Kafka **AFTER** the document has been written to Elastic.
 
-Scala (flow)
-: @@snip ($alpakka$/elasticsearch/src/test/scala/akka/stream/alpakka/elasticsearch/ElasticsearchSpec.scala) { #kafka-example }
-
-Java (flow)
-: @@snip ($alpakka$/elasticsearch/src/test/java/akka/stream/alpakka/elasticsearch/ElasticsearchTest.java) { #kafka-example }
-
-
-
-### Running the example code
-
-The code in this guide is part of runnable tests of this project. You are welcome to edit the code and run it in sbt.
-
 Scala
-:   ```
-    sbt
-    > elasticsearch/testOnly *.ElasticsearchSpec
-    ```
+: @@snip [snip](/elasticsearch/src/test/scala/docs/scaladsl/ElasticsearchSpec.scala) { #kafka-example }
 
 Java
-:   ```
-    sbt
-    > elasticsearch/testOnly *.ElasticsearchTest
-    ```
+: @@snip [snip](/elasticsearch/src/test/java/docs/javadsl/ElasticsearchTest.java) { #kafka-example }
+
+
+### Specifying custom index-name for every document
+
+When working with index-patterns using wildcards, you might need to specify a custom
+index-name for each document:
+
+Scala
+: @@snip [snip](/elasticsearch/src/test/scala/docs/scaladsl/ElasticsearchSpec.scala) { #custom-index-name-example }
+
+Java
+: @@snip [snip](/elasticsearch/src/test/java/docs/javadsl/ElasticsearchTest.java) { #custom-index-name-example }
+
+
+### Specifying custom metadata for every document
+
+In some cases you might want to specify custom metadata per document you are inserting, for example a `pipeline`, 
+this can be done like so:
+
+Scala
+: @@snip [snip](/elasticsearch/src/test/scala/docs/scaladsl/ElasticsearchSpec.scala) { #custom-metadata-example }
+
+Java
+: @@snip [snip](/elasticsearch/src/test/java/docs/javadsl/ElasticsearchTest.java) { #custom-metadata-example }
+
+ 
+### More custom searching
+
+The easiest way of using ElasticSearch-source, is to just specify the query-param. Sometimes you need more control,
+like specifying which fields to return and so on. In such cases you can instead use 'searchParams' instead:
+
+Scala
+: @@snip [snip](/elasticsearch/src/test/scala/docs/scaladsl/ElasticsearchSpec.scala) { #custom-search-params }
+
+Java
+: @@snip [snip](/elasticsearch/src/test/java/docs/javadsl/ElasticsearchTest.java) { #custom-search-params }

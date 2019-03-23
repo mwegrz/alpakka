@@ -1,14 +1,19 @@
 /*
- * Copyright (C) 2016-2017 Lightbend Inc. <http://www.lightbend.com>
+ * Copyright (C) 2016-2019 Lightbend Inc. <http://www.lightbend.com>
  */
 
 package akka.stream.alpakka.ftp
 package impl
 
+import akka.annotation.InternalApi
 import akka.stream.stage.{GraphStage, OutHandler}
 import akka.stream.{Attributes, Outlet, SourceShape}
 import akka.stream.impl.Stages.DefaultAttributes.IODispatcher
 
+/**
+ * INTERNAL API
+ */
+@InternalApi
 private[ftp] trait FtpBrowserGraphStage[FtpClient, S <: RemoteFileSettings] extends GraphStage[SourceShape[FtpFile]] {
 
   def name: String

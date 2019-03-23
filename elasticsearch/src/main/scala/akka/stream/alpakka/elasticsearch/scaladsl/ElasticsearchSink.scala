@@ -1,26 +1,31 @@
 /*
- * Copyright (C) 2016-2017 Lightbend Inc. <http://www.lightbend.com>
+ * Copyright (C) 2016-2019 Lightbend Inc. <http://www.lightbend.com>
  */
 
 package akka.stream.alpakka.elasticsearch.scaladsl
 
 import akka.{Done, NotUsed}
-import akka.stream.alpakka.elasticsearch.IncomingMessage
+import akka.stream.alpakka.elasticsearch._
 import akka.stream.scaladsl.{Keep, Sink}
 import org.elasticsearch.client.RestClient
 import spray.json.JsonWriter
 
 import scala.concurrent.Future
 
+/**
+ * Scala API to create Elasticsearch sinks.
+ */
 object ElasticsearchSink {
 
   /**
-   * Scala API: creates a sink based on [[ElasticsearchFlowStage]]
+   * Create a sink to update Elasticsearch with [[akka.stream.alpakka.elasticsearch.WriteMessage WriteMessage]]s containing type `T`.
    */
-  def create[T](indexName: String, typeName: String, settings: ElasticsearchSinkSettings)(
-      implicit client: RestClient,
-      writer: JsonWriter[T]
-  ): Sink[IncomingMessage[T, NotUsed], Future[Done]] =
+  def create[T](indexName: String,
+                typeName: String,
+                settings: ElasticsearchWriteSettings = ElasticsearchWriteSettings.Default)(
+      implicit elasticsearchClient: RestClient,
+      sprayJsonWriter: JsonWriter[T]
+  ): Sink[WriteMessage[T, NotUsed], Future[Done]] =
     ElasticsearchFlow.create[T](indexName, typeName, settings).toMat(Sink.ignore)(Keep.right)
 
 }
